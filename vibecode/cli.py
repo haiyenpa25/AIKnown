@@ -112,6 +112,35 @@ def ui():
     typer.echo(f"Đã xuất sơ đồ ra file {output_file} và mở trên trình duyệt!")
 
 @app.command()
+def prompt(task: str, filepath: str):
+    """Lấy Ngữ cảnh File và nấu thành Prompt chuẩn gửi đi cho AI (như Antigravity/Gemini)"""
+    store = ContextStore()
+    from .injector import Injector
+    injector = Injector(store)
+    context_str = injector.generate_context_for_file(filepath)
+    store.close()
+    
+    prompt_template = f"""[THÔNG ĐIỆP GỬI MÔ HÌNH AI]
+Chào AI, tôi đang thực hiện nhiệm vụ: "{task}".
+Dưới đây là Ngữ cảnh VibeCode (Graph Context) hiện tại của file `{filepath}`:
+
+```markdown
+{context_str}
+```
+
+MỆNH LỆNH THỰC THI (CHỐNG ẢO GIÁC LỖI):
+1. Dựa vào các Hàm được liệt kê trong File này (và các hàm Outbound mà chúng gọi đi), hãy phân tích sơ đồ logic và tư vấn xem việc làm "{task}" nên can thiệp vào Hàm nào là hợp lý và an toàn nhất?
+2. Có hàm Inbound nào bị ảnh hưởng (Break) nếu tôi sửa logic ở File này không?
+3. Tuyệt đối KHÔNG TỰ ĐOÁN MÓ Kịch Bản/Code của các hàm Outbound. Nếu bạn cho rằng mình cần đọc nội dung gốc của một hàm Outbound, hãy yêu cầu tôi dùng VibeCode mở ra cho bạn xem.
+========================="""
+    
+    out_file = "AI_PROMPT_TO_COPY.txt"
+    with open(out_file, 'w', encoding='utf-8') as f:
+        f.write(prompt_template)
+        
+    typer.echo(f"Đã tạo file {out_file} chứa khuôn mẫu Prompt siêu cấp chống Lỗi. Bạn chỉ cần Copy và paste gửi ngay cho AI.")
+
+@app.command()
 def state(key: str, value: str):
     store = ContextStore()
     store.upsert_state(key, value)

@@ -1,0 +1,31 @@
+[THÔNG ĐIỆP GỬI MÔ HÌNH AI]
+Chào AI, tôi đang thực hiện nhiệm vụ: "Tạo tính năng gửi email".
+Dưới đây là Ngữ cảnh VibeCode (Graph Context) hiện tại của file `test.py`:
+
+```markdown
+[VIBECODE_HANDOVER_TOKEN]
+CONTEXT_ID: "sess_current"
+ACTIVE_FOCUS: ["test.py"]
+CURRENT_TASK: "None"
+DB_PATH: ".vibecode/store.db"
+[/VIBECODE_HANDOVER_TOKEN]
+
+---
+### ACTIVE FILE: test.py
+SUMMARY: N/A
+
+### SYMBOLS IN FILE:
+- [Function] fetch_data
+- [Function] process_data
+  -> Calls: fetch_data
+- [Class] Manager
+- [Function] execute
+  -> Calls: log_event, process_data
+- [Function] log_event
+```
+
+MỆNH LỆNH THỰC THI (CHỐNG ẢO GIÁC LỖI):
+1. Dựa vào các Hàm được liệt kê trong File này (và các hàm Outbound mà chúng gọi đi), hãy phân tích sơ đồ logic và tư vấn xem việc làm "Tạo tính năng gửi email" nên can thiệp vào Hàm nào là hợp lý và an toàn nhất?
+2. Có hàm Inbound nào bị ảnh hưởng (Break) nếu tôi sửa logic ở File này không?
+3. Tuyệt đối KHÔNG TỰ ĐOÁN MÓ Kịch Bản/Code của các hàm Outbound. Nếu bạn cho rằng mình cần đọc nội dung gốc của một hàm Outbound, hãy yêu cầu tôi dùng VibeCode mở ra cho bạn xem.
+=========================
