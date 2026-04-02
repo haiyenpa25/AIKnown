@@ -12,27 +12,41 @@ class UIBuilder:
         
         elements = []
         
-        # Add Nodes
+        # Thêm Nodes
         for n_id, name, type_, file_path in nodes_db:
-            color = "#ccc"
             if type_ == 'FILE':
-                color = "#4287f5" # Blue
-            elif type_ == 'Class':
-                color = "#f54254" # Red
-            elif type_ == 'Function':
-                color = "#42f560" # Green
+                # File node là một Parent Node (Hộp chứa)
+                elements.append({
+                    "data": {
+                        "id": n_id,
+                        "label": name,
+                        "type": type_
+                    }
+                })
+            else:
+                color = "#ccc"
+                if type_ == 'Class':
+                    color = "#f54254" # Đỏ rực rỡ
+                elif type_ == 'Function':
+                    color = "#E1B000" # Vàng sang trọng
                 
-            elements.append({
-                "data": {
-                    "id": n_id,
-                    "label": name,
-                    "type": type_,
-                    "color": color
-                }
-            })
+                # Logic bao bọc (Compound Node): Node này nằm TRONG file
+                elements.append({
+                    "data": {
+                        "id": n_id,
+                        "label": name,
+                        "type": type_,
+                        "color": color,
+                        "parent": f"file::{file_path}"
+                    }
+                })
             
-        # Add Edges
+        # Thêm Edges
         for source, target, relation in edges_db:
+            # Loại bỏ các đường mờ nhạt nếu nó chỉ là quan hệ File chứa con (để đỡ rối, vì đã có hộp parent chứa)
+            if relation == 'CONTAINS':
+                continue
+                
             elements.append({
                 "data": {
                     "source": source,
@@ -46,23 +60,25 @@ class UIBuilder:
 <html>
 <head>
 <meta charset="utf-8">
-<title>VibeCode Call Graph</title>
+<title>VibeCode Enhanced Visuals</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.26.0/cytoscape.min.js"></script>
 <style>
-    body {{ font-family: sans-serif; margin: 0; padding: 0; background: #1e1e1e; color: white; }}
+    body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background: #0f172a; color: #f8fafc; overflow: hidden; }}
     #cy {{ width: 100vw; height: 100vh; display: block; }}
-    #info {{ position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.8); padding: 10px; border-radius: 5px; z-index: 10; max-height: 90vh; overflow-y: auto; width: 300px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }}
-    h2 {{ margin-top: 0; border-bottom: 1px solid #444; padding-bottom: 5px; }}
+    #info {{ position: absolute; top: 15px; left: 15px; background: rgba(30, 41, 59, 0.9); padding: 15px; border-radius: 8px; z-index: 10; max-height: 90vh; overflow-y: auto; width: 320px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.5); border: 1px solid #334155; backdrop-filter: blur(4px); }}
+    h2 {{ margin-top: 0; border-bottom: 1px solid #334155; padding-bottom: 10px; font-size: 1.2rem; color: #38bdf8; }}
+    p.subtitle {{ font-size: 12px; color: #94a3b8; line-height: 1.4; }}
+    .badge {{ background: #1e293b; padding: 3px 6px; border-radius: 4px; font-size: 11px; color: #cbd5e1; border: 1px solid #475569; }}
     ::-webkit-scrollbar {{ width: 8px; }}
-    ::-webkit-scrollbar-thumb {{ background: #888; border-radius: 4px; }}
+    ::-webkit-scrollbar-thumb {{ background: #475569; border-radius: 4px; }}
 </style>
 </head>
 <body>
 <div id="info">
-    <h2>VibeCode Graph</h2>
-    <p style="font-size: 13px; color: #aaa;">Zoom và kéo thả để điều hướng mạng lưới phụ thuộc.</p>
-    <div id="selected-info" style="font-size: 14px; margin-top: 15px;">
-        <i>Nhấn vào một Node để xem chi tiết...</i>
+    <h2>VibeCode System Graph</h2>
+    <p class="subtitle">Trực quan hóa cấu trúc dự án. <br/>Dùng cuộn chuột để <b>Zoom</b>, Kéo thả vùng trống để <b>Di chuyển</b>.</p>
+    <div id="selected-info" style="font-size: 13px; margin-top: 15px; background: #0f172a; padding: 10px; border-radius: 6px; border: 1px dashed #334155;">
+        <i style="color: #64748b;">Khởi tạo... Hãy bấm vào một Hình Chữ Nhật (File) nhỏ hoặc một Hình Tròn (Hàm/Class) trên đồ thị.</i>
     </div>
 </div>
 <div id="cy"></div>
@@ -74,34 +90,82 @@ class UIBuilder:
         elements: elements,
         style: [
             {{
-                selector: 'node',
+                // Style cho Parent Node (Các hộp File)
+                selector: ':parent',
+                style: {{
+                    'background-opacity': 0.05,
+                    'background-color': '#38bdf8',
+                    'border-width': 2,
+                    'border-style': 'dashed',
+                    'border-color': '#38bdf8',
+                    'border-opacity': 0.6,
+                    'label': 'data(label)',
+                    'color': '#7dd3fc',
+                    'text-valign': 'top',
+                    'text-halign': 'center',
+                    'font-size': '16px',
+                    'font-weight': 'bold',
+                    'text-margin-y': -8,
+                    'padding': 15
+                }}
+            }},
+            {{
+                // Style cho Child Node (Các Hàm/Class)
+                selector: 'node:child',
                 style: {{
                     'background-color': 'data(color)',
                     'label': 'data(label)',
                     'color': '#fff',
-                    'text-outline-color': '#000',
+                    'text-outline-color': '#0f172a',
                     'text-outline-width': 2,
-                    'font-size': '12px'
+                    'font-size': '11px',
+                    'width': 25,
+                    'height': 25,
                 }}
             }},
             {{
                 selector: 'edge',
                 style: {{
-                    'width': 2,
-                    'line-color': '#888',
-                    'target-arrow-color': '#888',
+                    'width': 1.5,
+                    'line-color': '#475569',
+                    'target-arrow-color': '#475569',
                     'target-arrow-shape': 'triangle',
                     'curve-style': 'bezier',
-                    'label': 'data(label)',
                     'font-size': '10px',
-                    'color': '#aaa',
-                    'text-rotation': 'autorotate'
+                    'color': '#94a3b8',
+                    'arrow-scale': 1.2
+                }}
+            }},
+            {{
+                // Mờ đi khi không liên quan
+                selector: '.dimmed',
+                style: {{
+                    'opacity': 0.15
+                }}
+            }},
+            {{
+                // Sáng lên (Node)
+                selector: 'node.highlighted',
+                style: {{
+                    'border-width': 4,
+                    'border-color': '#fff',
+                    'z-index': 999
+                }}
+            }},
+            {{
+                // Sáng lên (Cạnh mũi tên)
+                selector: 'edge.highlighted',
+                style: {{
+                    'width': 3,
+                    'line-color': '#38bdf8',
+                    'target-arrow-color': '#38bdf8',
+                    'z-index': 999
                 }}
             }}
         ],
         layout: {{
             name: 'cose',
-            idealEdgeLength: 100,
+            idealEdgeLength: 60,
             nodeOverlap: 20,
             refresh: 20,
             fit: true,
@@ -119,15 +183,48 @@ class UIBuilder:
         }}
     }});
     
-    cy.on('tap', 'node', function(evt){{
-        var node = evt.target;
-        var inDegrees = node.incomers('edge').length;
-        var outDegrees = node.outgoers('edge').length;
-        document.getElementById('selected-info').innerHTML = 
-            '<div style="margin-bottom: 5px;"><strong>Tên:</strong> <span style="color:#42f560">' + node.data('label') + '</span></div>' +
-            '<div style="margin-bottom: 5px;"><strong>Loại:</strong> ' + node.data('type') + '</div>' +
-            '<div style="margin-bottom: 5px;"><strong>Bị gọi:</strong> ' + inDegrees + ' lần</div>' +
-            '<div style="margin-bottom: 5px;"><strong>Gọi đi:</strong> ' + outDegrees + ' lần</div>';
+    // Core tính năng tương tác - Interactive Highlighting
+    cy.on('tap', function(evt){{
+        // Reset trạng thái làm sạch bản đồ
+        cy.elements().removeClass('highlighted dimmed');
+        document.getElementById('selected-info').innerHTML = '<i style="color: #64748b;">Mạng nhện đã reset. Bấm lại vào các đối tượng để hiển thị liên kết...</i>';
+
+        var target = evt.target;
+        
+        // Chỉ kích hoạt hiệu ứng nếu Tap trúng một Element (Node hoặc Edge)
+        if (target !== cy) {{
+            if (target.isNode() && target.isParent()) {{
+               // Xử lý báo cáo cho Vỏ Box (File)
+               var childrenCount = target.children().length;
+               document.getElementById('selected-info').innerHTML = 
+                '<div style="margin-bottom: 8px;"><strong>File Mở Rộng:</strong> <span style="color:#38bdf8">' + target.data('label') + '</span></div>' +
+                '<div style="margin-bottom: 8px;"><span class="badge">Đang chứa ' + childrenCount + ' phần tử con</span></div>';
+            }} 
+            else if (target.isNode() && target.isChild()) {{
+                // Lấy vùng lân cận
+                var neighborhood = target.closedNeighborhood();
+                
+                // Mờ toàn bộ phần tử KHÔNG thuộc Neighborhood (bao gồm cả Box chứa không liên quan)
+                cy.elements().difference(neighborhood).addClass('dimmed');
+                
+                // Cần tránh làm mờ cái Hộp chứa cái Node hiện tại, nếu không hộp chứa nó sẽ bị mờ luôn
+                target.parent().removeClass('dimmed');
+                
+                // Highlight tụi còn lại
+                neighborhood.addClass('highlighted');
+                
+                var inDegrees = target.incomers('edge').length;
+                var outDegrees = target.outgoers('edge').length;
+                
+                document.getElementById('selected-info').innerHTML = 
+                    '<div style="margin-bottom: 8px;"><strong>Định danh:</strong> <span style="color:#fde047">' + target.data('label') + '</span></div>' +
+                    '<div style="margin-bottom: 8px;"><strong>Phân Loại:</strong> <span class="badge">' + target.data('type') + '</span></div>' +
+                    '<div style="margin-bottom: 8px;"><strong>Nằm trong:</strong> <span style="color:#cbd5e1">' + target.parent().data('label') + '</span></div>' +
+                    '<hr style="border-color:#334155; margin: 10px 0;" />' +
+                    '<div style="margin-bottom: 5px;"><strong>Nhận vào (Inbound):</strong> ' + inDegrees + ' mũi tên</div>' +
+                    '<div style="margin-bottom: 5px;"><strong>Phát ra (Outbound):</strong> ' + outDegrees + ' mũi tên</div>';
+            }}
+        }}
     }});
 </script>
 </body>
