@@ -23,8 +23,11 @@ class Injector:
         if symbols:
             lines.append("\n### SYMBOLS IN FILE:")
             for sym in symbols:
-                lines.append(f"- [{sym[1]}] {sym[0]}") # sym[2] is docstring, omitted for concise UI if empty
-                
+                symbol_name = sym[0]
+                lines.append(f"- [{sym[1]}] {symbol_name}")
+                outbound = self.store.get_outbound_dependencies(symbol_name)
+                if outbound:
+                    lines.append(f"  -> Calls: {', '.join(outbound[:10])}" + ("..." if len(outbound) > 10 else ""))
         # Inject protocol token
         token = self.generate_handover_token(target_filepath)
         lines.insert(0, token)

@@ -1,7 +1,14 @@
-def example_function():
-    """This is a test function."""
-    print("VibeCode test")
+def fetch_data():
+    pass
 
-class ExampleClass:
-    def method(self):
+def process_data():
+    fetch_data()
+    print("Data processed")
+
+class Manager:
+    def execute(self):
+        process_data()
+        self.log_event()
+
+    def log_event(self):
         pass

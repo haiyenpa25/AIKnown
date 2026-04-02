@@ -46,17 +46,36 @@ class CodeParser:
 
     def _parse_python(self, tree, content_bytes):
         symbols = []
+        def get_calls(node):
+            calls = set()
+            def walk(n):
+                if n.type == 'call':
+                    for c in n.children:
+                        if c.type in ['identifier']:
+                            calls.add(content_bytes[c.start_byte:c.end_byte].decode('utf-8'))
+                        elif c.type == 'attribute':
+                            for cc in reversed(c.children):
+                                if cc.type == 'identifier':
+                                    calls.add(content_bytes[cc.start_byte:cc.end_byte].decode('utf-8'))
+                                    break
+                for child in n.children:
+                    walk(child)
+            walk(node)
+            return list(calls)
+
         def traverse(node):
             if node.type in ['function_definition', 'class_definition']:
                 for child in node.children:
                     if child.type == 'identifier':
                         name = content_bytes[child.start_byte:child.end_byte].decode('utf-8')
                         type_ = 'Class' if node.type == 'class_definition' else 'Function'
+                        deps = get_calls(node) if type_ == 'Function' else []
                         symbols.append({
                             'name': name,
                             'type': type_,
                             'signature': name + '()',
-                            'docstring': ''
+                            'docstring': '',
+                            'dependencies': deps
                         })
                         break
             for child in node.children:
@@ -66,17 +85,31 @@ class CodeParser:
 
     def _parse_php(self, tree, content_bytes):
         symbols = []
+        def get_calls(node):
+            calls = set()
+            def walk(n):
+                if n.type in ['function_call_expression', 'method_call_expression']:
+                    for c in n.children:
+                        if c.type == 'name':
+                            calls.add(content_bytes[c.start_byte:c.end_byte].decode('utf-8'))
+                for child in n.children:
+                    walk(child)
+            walk(node)
+            return list(calls)
+
         def traverse(node):
             if node.type in ['function_definition', 'method_declaration', 'class_declaration']:
                 for child in node.children:
                     if child.type == 'name':
                         name = content_bytes[child.start_byte:child.end_byte].decode('utf-8')
                         type_ = 'Class' if node.type == 'class_declaration' else 'Function'
+                        deps = get_calls(node) if type_ == 'Function' else []
                         symbols.append({
                             'name': name,
                             'type': type_,
                             'signature': name + '()',
-                            'docstring': ''
+                            'docstring': '',
+                            'dependencies': deps
                         })
                         break
             for child in node.children:
@@ -86,17 +119,36 @@ class CodeParser:
 
     def _parse_js(self, tree, content_bytes):
         symbols = []
+        def get_calls(node):
+            calls = set()
+            def walk(n):
+                if n.type == 'call_expression':
+                    for c in n.children:
+                        if c.type == 'identifier':
+                            calls.add(content_bytes[c.start_byte:c.end_byte].decode('utf-8'))
+                        elif c.type == 'member_expression':
+                            for cc in reversed(c.children):
+                                if cc.type == 'property_identifier':
+                                    calls.add(content_bytes[cc.start_byte:cc.end_byte].decode('utf-8'))
+                                    break
+                for child in n.children:
+                    walk(child)
+            walk(node)
+            return list(calls)
+            
         def traverse(node):
             if node.type in ['function_declaration', 'class_declaration']:
                 for child in node.children:
                     if child.type == 'identifier':
                         name = content_bytes[child.start_byte:child.end_byte].decode('utf-8')
                         type_ = 'Class' if node.type == 'class_declaration' else 'Function'
+                        deps = get_calls(node) if type_ == 'Function' else []
                         symbols.append({
                             'name': name,
                             'type': type_,
                             'signature': name + '()',
-                            'docstring': ''
+                            'docstring': '',
+                            'dependencies': deps
                         })
                         break
             for child in node.children:

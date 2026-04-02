@@ -81,6 +81,35 @@ class ContextStore:
         ''', (file_id, name, type_, signature, docstring))
         self.conn.commit()
         return cursor.lastrowid
+        
+    def add_dependency(self, source_symbol_id, target_symbol_name):
+        cursor = self.conn.cursor()
+        cursor.execute('''
+            INSERT INTO dependencies (source_symbol_id, target_symbol_name)
+            VALUES (?, ?)
+        ''', (source_symbol_id, target_symbol_name))
+        self.conn.commit()
+
+    def get_outbound_dependencies(self, symbol_name):
+        cursor = self.conn.cursor()
+        cursor.execute('''
+            SELECT DISTINCT d.target_symbol_name
+            FROM dependencies d
+            JOIN symbols s ON s.id = d.source_symbol_id
+            WHERE s.name = ?
+        ''', (symbol_name,))
+        return [row[0] for row in cursor.fetchall()]
+
+    def get_inbound_dependencies(self, symbol_name):
+        cursor = self.conn.cursor()
+        cursor.execute('''
+            SELECT DISTINCT s.name, s.type, f.path
+            FROM symbols s
+            JOIN dependencies d ON d.source_symbol_id = s.id
+            JOIN files f ON s.file_id = f.id
+            WHERE d.target_symbol_name = ?
+        ''', (symbol_name,))
+        return [{'name': row[0], 'type': row[1], 'file': row[2]} for row in cursor.fetchall()]
     
     def upsert_state(self, key, value):
         cursor = self.conn.cursor()
