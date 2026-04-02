@@ -63,11 +63,25 @@ class CodeParser:
             walk(node)
             return list(calls)
 
-        def traverse(node):
+        def traverse(node, current_class=""):
+            if node.type in ['import_statement', 'import_from_statement']:
+                for child in node.children:
+                    if child.type == 'dotted_name':
+                        mod_name = content_bytes[child.start_byte:child.end_byte].decode('utf-8')
+                        symbols.append({
+                            'name': mod_name,
+                            'type': 'External',
+                            'signature': '',
+                            'docstring': '',
+                            'dependencies': []
+                        })
+                        
             if node.type in ['function_definition', 'class_definition']:
+                raw_name = ""
                 for child in node.children:
                     if child.type == 'identifier':
-                        name = content_bytes[child.start_byte:child.end_byte].decode('utf-8')
+                        raw_name = content_bytes[child.start_byte:child.end_byte].decode('utf-8')
+                        name = f"{current_class}.{raw_name}" if (current_class and node.type == 'function_definition') else raw_name
                         type_ = 'Class' if node.type == 'class_definition' else 'Function'
                         deps = get_calls(node) if type_ == 'Function' else []
                         symbols.append({
@@ -78,8 +92,13 @@ class CodeParser:
                             'dependencies': deps
                         })
                         break
-            for child in node.children:
-                traverse(child)
+                
+                pass_class = raw_name if node.type == 'class_definition' else current_class
+                for child in node.children:
+                    traverse(child, pass_class)
+            else:
+                for child in node.children:
+                    traverse(child, current_class)
         traverse(tree.root_node)
         return symbols
 
@@ -97,11 +116,20 @@ class CodeParser:
             walk(node)
             return list(calls)
 
-        def traverse(node):
+        def traverse(node, current_class=""):
+            # PHP namespace use / require
+            if node.type in ['use_declaration', 'require_once_expression', 'include_expression']:
+                for child in node.children:
+                    if child.type in ['name', 'string']:
+                        mod_name = content_bytes[child.start_byte:child.end_byte].decode('utf-8').strip("\"'")
+                        symbols.append({'name': mod_name, 'type': 'External', 'signature': '', 'docstring': '', 'dependencies': []})
+
             if node.type in ['function_definition', 'method_declaration', 'class_declaration']:
+                raw_name = ""
                 for child in node.children:
                     if child.type == 'name':
-                        name = content_bytes[child.start_byte:child.end_byte].decode('utf-8')
+                        raw_name = content_bytes[child.start_byte:child.end_byte].decode('utf-8')
+                        name = f"{current_class}::{raw_name}" if (current_class and node.type == 'method_declaration') else raw_name
                         type_ = 'Class' if node.type == 'class_declaration' else 'Function'
                         deps = get_calls(node) if type_ == 'Function' else []
                         symbols.append({
@@ -112,8 +140,12 @@ class CodeParser:
                             'dependencies': deps
                         })
                         break
-            for child in node.children:
-                traverse(child)
+                pass_class = raw_name if node.type == 'class_declaration' else current_class
+                for child in node.children:
+                    traverse(child, pass_class)
+            else:
+                for child in node.children:
+                    traverse(child, current_class)
         traverse(tree.root_node)
         return symbols
 
@@ -136,11 +168,22 @@ class CodeParser:
             walk(node)
             return list(calls)
             
-        def traverse(node):
+        def traverse(node, current_class=""):
+            if node.type in ['import_statement']:
+                for child in node.children:
+                    if child.type == 'string':
+                        mod_name = content_bytes[child.start_byte:child.end_byte].decode('utf-8').strip("\"'")
+                        symbols.append({'name': mod_name, 'type': 'External', 'signature': '', 'docstring': '', 'dependencies': []})
+            elif node.type == 'call_expression':
+                # Catch require('module')
+                pass # can implement more deeply later
+                
             if node.type in ['function_declaration', 'class_declaration']:
+                raw_name = ""
                 for child in node.children:
                     if child.type == 'identifier':
-                        name = content_bytes[child.start_byte:child.end_byte].decode('utf-8')
+                        raw_name = content_bytes[child.start_byte:child.end_byte].decode('utf-8')
+                        name = f"{current_class}.{raw_name}" if (current_class and node.type == 'function_declaration') else raw_name
                         type_ = 'Class' if node.type == 'class_declaration' else 'Function'
                         deps = get_calls(node) if type_ == 'Function' else []
                         symbols.append({
@@ -151,7 +194,11 @@ class CodeParser:
                             'dependencies': deps
                         })
                         break
-            for child in node.children:
-                traverse(child)
+                pass_class = raw_name if node.type == 'class_declaration' else current_class
+                for child in node.children:
+                    traverse(child, pass_class)
+            else:
+                for child in node.children:
+                    traverse(child, current_class)
         traverse(tree.root_node)
         return symbols

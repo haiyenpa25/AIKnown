@@ -147,5 +147,11 @@ def state(key: str, value: str):
     store.close()
     typer.echo(f"Đã cập nhật state: {key} = {value}")
 
+@app.command()
+def watch(root_dir: str = "."):
+    """Bật chế độ Giám sát (Watchdog) - Tự động cập nhật Graph khi lưu file."""
+    from .watcher import start_watcher
+    start_watcher(root_dir)
+
 if __name__ == "__main__":
     app()

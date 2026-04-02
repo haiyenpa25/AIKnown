@@ -80,9 +80,32 @@ class ContextStore:
 
     def find_node_by_name(self, name):
         cursor = self.conn.cursor()
+        # 1. Tìm chính xác (Exact match FQDN hoặc tên toàn cục)
         cursor.execute("SELECT id FROM nodes WHERE name = ?", (name,))
-        row = cursor.fetchone()
-        return row[0] if row else None
+        rows = cursor.fetchall()
+        if len(rows) == 1:
+            return rows[0][0]
+        elif len(rows) > 1:
+            return rows[0][0]
+            
+        # 2. Tìm Heuristic (VD: trong code gọi 'save', trong DB có 'User.save')
+        cursor.execute("SELECT id FROM nodes WHERE name LIKE ?", (f'%.{name}',))
+        rows = cursor.fetchall()
+        if len(rows) == 1:
+            # Phát hiện duy nhất 1 thằng khớp (VD: chỉ có 1 class có hàm save)
+            return rows[0][0]
+        elif len(rows) > 1:
+            # Nếu có nhiều class cùng xài hàm save, heuristic tạm thời lấy thằng đầu tiên
+            # TODO tương lai: Tính File Proximity
+            return rows[0][0]
+            
+        # 3. Tìm theo PHP namespace (VD: gọi 'save', trong DB có 'User::save')
+        cursor.execute("SELECT id FROM nodes WHERE name LIKE ?", (f'%::{name}',))
+        rows = cursor.fetchall()
+        if len(rows) >= 1:
+            return rows[0][0]
+            
+        return None
 
     def get_node_by_name(self, name):
         cursor = self.conn.cursor()
