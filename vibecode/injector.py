@@ -10,7 +10,7 @@ class Injector:
         lines.append(f"### ACTIVE FILE: {target_filepath}")
         
         cursor = self.store.conn.cursor()
-        cursor.execute("SELECT id, summary FROM files WHERE path=?", (target_filepath,))
+        cursor.execute("SELECT id, content FROM nodes WHERE file_path=? AND type='FILE'", (target_filepath,))
         row = cursor.fetchone()
         if not row:
             return f"Không tìm thấy file {target_filepath} trong CSDL. Hãy chạy `vibecode scan`."
@@ -18,16 +18,16 @@ class Injector:
         file_id, summary = row
         lines.append(f"SUMMARY: {summary if summary else 'N/A'}")
         
-        cursor.execute("SELECT name, type, docstring FROM symbols WHERE file_id=?", (file_id,))
-        symbols = cursor.fetchall()
+        symbols = self.store.get_node_context(target_filepath) # returns id, name, type
         if symbols:
             lines.append("\n### SYMBOLS IN FILE:")
             for sym in symbols:
-                symbol_name = sym[0]
-                lines.append(f"- [{sym[1]}] {symbol_name}")
-                outbound = self.store.get_outbound_dependencies(symbol_name)
+                node_id, symbol_name, symbol_type = sym
+                lines.append(f"- [{symbol_type}] {symbol_name}")
+                outbound = self.store.get_outbound(node_id)
                 if outbound:
                     lines.append(f"  -> Calls: {', '.join(outbound[:10])}" + ("..." if len(outbound) > 10 else ""))
+                    
         # Inject protocol token
         token = self.generate_handover_token(target_filepath)
         lines.insert(0, token)
